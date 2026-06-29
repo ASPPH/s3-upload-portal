@@ -196,7 +196,7 @@ def lambda_handler(event, context):
 
     # Check if file already exists
     if not confirm_overwrite and check_object_exists(bucket, object_key):
-        public_url = f'https://{bucket}.s3.amazonaws.com/{object_key}'
+        public_url = f'https://upload.aspph.org/{object_key}'
         return build_response(409, {
             'error': 'Conflict',
             'message': f'A file named "{filename}" already exists.',
@@ -221,7 +221,7 @@ def lambda_handler(event, context):
             'message': 'Failed to generate upload URL',
         }, origin)
 
-    public_url = f'https://{bucket}.s3.amazonaws.com/{object_key}'
+    public_url = f'https://upload.aspph.org/{object_key}'
 
     return build_response(200, {
         'uploadUrl': upload_url,
