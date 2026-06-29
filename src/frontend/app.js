@@ -2,7 +2,7 @@
 
 // API endpoint — will be set after first CloudFormation deployment
 // Format: https://{api-id}.execute-api.us-east-1.amazonaws.com/prod/v1/upload
-const API_ENDPOINT = 'https://REPLACE_ME.execute-api.us-east-1.amazonaws.com/prod/v1/upload';
+const API_ENDPOINT = 'https://zuxxqyttq2.execute-api.us-east-1.amazonaws.com/prod/v1/upload';
 
 // Maximum file size: 50 MB in bytes
 const MAX_FILE_SIZE = 52428800;
