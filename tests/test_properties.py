@@ -17,7 +17,7 @@ from hypothesis import strategies as st
 # Set env vars before importing handler
 os.environ.setdefault('TARGET_BUCKET', 'test-bucket')
 os.environ['ALLOWED_ORIGIN'] = 'https://portal.example.com'
-os.environ['UPLOAD_PREFIX'] = 'uploads/'
+os.environ['UPLOAD_PREFIX'] = 'shared/'
 
 handler_module = importlib.import_module('src.lambda.handler')
 
@@ -245,7 +245,7 @@ class TestProperty2ObjectKeyPreservesFilenameAndGuaranteesUniqueness:
     def test_object_key_starts_with_upload_prefix(self, filename):
         """The generated object key SHALL start with the configured upload prefix."""
         key = generate_object_key(filename)
-        assert key.startswith('uploads/'), f"Generated key '{key}' does not start with 'uploads/'"
+        assert key.startswith('shared/'), f"Generated key '{key}' does not start with 'shared/'"
 
     @given(filename=valid_filenames)
     @settings(max_examples=100)

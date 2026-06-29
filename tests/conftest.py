@@ -10,7 +10,7 @@ import pytest
 # Ensure env vars are set before any handler imports
 os.environ.setdefault('UPLOAD_PASSWORD', 'test-secret')
 os.environ.setdefault('TARGET_BUCKET', 'test-bucket')
-os.environ.setdefault('UPLOAD_PREFIX', 'uploads/')
+os.environ.setdefault('UPLOAD_PREFIX', 'shared/')
 os.environ.setdefault('ALLOWED_ORIGIN', 'https://portal.example.com')
 
 
@@ -19,7 +19,7 @@ def mock_env(monkeypatch):
     """Set environment variables for Lambda handler."""
     monkeypatch.setenv('UPLOAD_PASSWORD', 'test-secret')
     monkeypatch.setenv('TARGET_BUCKET', 'test-bucket')
-    monkeypatch.setenv('UPLOAD_PREFIX', 'uploads/')
+    monkeypatch.setenv('UPLOAD_PREFIX', 'shared/')
     monkeypatch.setenv('ALLOWED_ORIGIN', 'https://portal.example.com')
 
 
@@ -28,7 +28,7 @@ def mock_s3_client():
     """Patch boto3.client to return a mock S3 client with a fake presigned URL."""
     mock_client = MagicMock()
     mock_client.generate_presigned_url.return_value = (
-        'https://test-bucket.s3.amazonaws.com/uploads/20250115_abcd1234_test.pdf'
+        'https://test-bucket.s3.amazonaws.com/shared/test.pdf'
         '?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=300'
     )
     with patch('boto3.client', return_value=mock_client) as mock_boto3:

@@ -21,7 +21,7 @@ Parameters:
 
   UploadPrefix:
     Type: String
-    Default: uploads/
+    Default: shared/
     Description: S3 key prefix for uploaded files
 
   AllowedContentTypes:

@@ -4,7 +4,7 @@
   "target_bucket": "aspph-prod-web-assets",
   "stack_name": "s3-upload-portal-prod",
   "environment": "prod",
-  "upload_prefix": "uploads/",
+  "upload_prefix": "shared/",
   "allowed_content_types": "application/pdf",
   "allowed_origin": "https://send.aspph.org"
 }
