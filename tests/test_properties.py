@@ -15,15 +15,18 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 # Set env vars before importing handler
-os.environ.setdefault('UPLOAD_PASSWORD', 'test-secret')
 os.environ.setdefault('TARGET_BUCKET', 'test-bucket')
 os.environ['ALLOWED_ORIGIN'] = 'https://portal.example.com'
 os.environ['UPLOAD_PREFIX'] = 'uploads/'
 
 handler_module = importlib.import_module('src.lambda.handler')
+
+# Mock the password cache so auth tests work without Secrets Manager
+handler_module._cached_password = 'test-secret'
+
 lambda_handler = handler_module.lambda_handler
 generate_object_key = handler_module.generate_object_key
-ALLOWED_CONTENT_TYPES = handler_module.ALLOWED_CONTENT_TYPES
+ALLOWED_CONTENT_TYPES = handler_module.DEFAULT_ALLOWED_CONTENT_TYPES
 
 FIXED_ALLOWED_ORIGIN = 'https://portal.example.com'
 

@@ -8,12 +8,15 @@ import sys
 import pytest
 
 # Set env var before importing handler
-os.environ['UPLOAD_PASSWORD'] = 'test-secret'
 os.environ['TARGET_BUCKET'] = 'test-bucket'
 
 # 'lambda' is a Python keyword, so use importlib to import the module
 handler_module = importlib.import_module('src.lambda.handler')
-ALLOWED_CONTENT_TYPES = handler_module.ALLOWED_CONTENT_TYPES
+
+# Mock the password cache so auth tests work without Secrets Manager
+handler_module._cached_password = 'test-secret'
+
+ALLOWED_CONTENT_TYPES = handler_module.DEFAULT_ALLOWED_CONTENT_TYPES
 MAX_FILE_SIZE = handler_module.MAX_FILE_SIZE
 build_response = handler_module.build_response
 lambda_handler = handler_module.lambda_handler
