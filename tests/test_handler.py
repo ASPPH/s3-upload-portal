@@ -148,7 +148,8 @@ class TestLambdaHandler:
         assert resp['statusCode'] == 200
 
     def test_s3_error_returns_500(self):
-        from unittest.mock import patch
+        from unittest.mock import patch, MagicMock
+        from botocore.exceptions import ClientError
         event = make_event({
             'password': 'test-secret',
             'filename': 'report.pdf',
@@ -157,6 +158,10 @@ class TestLambdaHandler:
         })
         with patch('boto3.client') as mock_boto3:
             mock_client = mock_boto3.return_value
+            # head_object returns 404 (file doesn't exist) so we proceed to presigned URL
+            mock_client.head_object.side_effect = ClientError(
+                {'Error': {'Code': '404', 'Message': 'Not Found'}}, 'HeadObject'
+            )
             mock_client.generate_presigned_url.side_effect = Exception('S3 service error')
             resp = lambda_handler(event, None)
         assert resp['statusCode'] == 500

@@ -127,12 +127,13 @@ function validateFile(file) {
  * Lambda adds CORS headers (Access-Control-Allow-Origin, Methods, Headers)
  * to all responses for the configured CloudFront origin.
  */
-async function requestPresignedUrl(file, password) {
+async function requestPresignedUrl(file, password, confirmOverwrite) {
   const body = JSON.stringify({
     password: password,
     filename: file.name,
     contentType: file.type,
     fileSize: file.size,
+    confirmOverwrite: confirmOverwrite || false,
   });
 
   const response = await fetch(API_ENDPOINT, {
@@ -142,6 +143,12 @@ async function requestPresignedUrl(file, password) {
   });
 
   const data = await response.json();
+
+  if (response.status === 409) {
+    // File exists — return data with conflict flag for caller to handle
+    data._conflict = true;
+    return data;
+  }
 
   if (!response.ok) {
     throw new Error(data.message || 'Upload request failed.');
@@ -226,16 +233,34 @@ uploadForm.addEventListener('submit', async function (event) {
 
   try {
     // Step 1: Request presigned URL from API
-    const data = await requestPresignedUrl(file, password);
+    var data = await requestPresignedUrl(file, password, false);
+
+    // Step 1b: Handle overwrite confirmation
+    if (data._conflict) {
+      hideProgress();
+      var confirmed = confirm(
+        'A file named "' + file.name + '" already exists.\n\n' +
+        'Existing URL: ' + data.existingUrl + '\n\n' +
+        'Do you want to overwrite it?'
+      );
+      if (!confirmed) {
+        setUploading(false);
+        updateUploadButtonState();
+        return;
+      }
+      // Re-request with overwrite confirmed
+      showProgress();
+      data = await requestPresignedUrl(file, password, true);
+    }
 
     // Step 2: Upload file directly to S3
     await uploadToS3(file, data.uploadUrl, file.type);
 
-    // Step 3: Show success result (Req 3.1 — within 2 seconds)
+    // Step 3: Show success result
     hideProgress();
     showResult(data.publicUrl);
   } catch (error) {
-    // On failure: display error, retain file selection for retry (Req 1.7)
+    // On failure: display error, retain file selection for retry
     hideProgress();
     showError(error.message || 'An unexpected error occurred.');
   } finally {

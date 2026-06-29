@@ -136,15 +136,28 @@ def validate_request(body):
 
 
 def generate_object_key(filename):
-    """Generate a unique S3 object key preserving the original filename.
+    """Generate S3 object key using the original filename.
 
-    Format: {prefix}{YYYYMMDD}_{uuid4_short}_{original_filename}
-    Example: uploads/20250115_a3b8c2d1_annual-report.pdf
+    Format: {prefix}{original_filename}
+    Example: uploads/annual-report.pdf
     """
     prefix = os.environ.get('UPLOAD_PREFIX', 'uploads/')
-    timestamp = datetime.now(timezone.utc).strftime('%Y%m%d')
-    short_uuid = uuid.uuid4().hex[:8]
-    return f'{prefix}{timestamp}_{short_uuid}_{filename}'
+    return f'{prefix}{filename}'
+
+
+def check_object_exists(bucket, key):
+    """Check if an object already exists in S3.
+
+    Returns True if the object exists, False otherwise.
+    """
+    try:
+        s3_client = boto3.client('s3')
+        s3_client.head_object(Bucket=bucket, Key=key)
+        return True
+    except ClientError as e:
+        if e.response['Error']['Code'] == '404':
+            return False
+        return False
 
 
 def lambda_handler(event, context):
@@ -174,11 +187,22 @@ def lambda_handler(event, context):
     if error_code:
         return build_response(error_code, error_body, origin)
 
-    # Generate presigned URL
+    # Generate object key
     bucket = os.environ.get('TARGET_BUCKET')
     content_type = body.get('contentType')
     filename = body.get('filename')
+    confirm_overwrite = body.get('confirmOverwrite', False)
     object_key = generate_object_key(filename)
+
+    # Check if file already exists
+    if not confirm_overwrite and check_object_exists(bucket, object_key):
+        public_url = f'https://{bucket}.s3.amazonaws.com/{object_key}'
+        return build_response(409, {
+            'error': 'Conflict',
+            'message': f'A file named "{filename}" already exists.',
+            'existingUrl': public_url,
+            'objectKey': object_key,
+        }, origin)
 
     try:
         s3_client = boto3.client('s3')

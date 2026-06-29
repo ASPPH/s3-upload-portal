@@ -249,11 +249,11 @@ class TestProperty2ObjectKeyPreservesFilenameAndGuaranteesUniqueness:
 
     @given(filename=valid_filenames)
     @settings(max_examples=100)
-    def test_two_calls_with_same_filename_produce_different_keys(self, filename):
-        """Two calls with the same filename SHALL produce different keys (uniqueness)."""
+    def test_two_calls_with_same_filename_produce_same_key(self, filename):
+        """Two calls with the same filename SHALL produce the same key (deterministic)."""
         key1 = generate_object_key(filename)
         key2 = generate_object_key(filename)
-        assert key1 != key2, f"Two calls with '{filename}' produced the same key: '{key1}'"
+        assert key1 == key2, f"Two calls with '{filename}' produced different keys: '{key1}' vs '{key2}'"
 
 
 # Feature: s3-upload-portal, Property 4: Disallowed content types are rejected
