@@ -1,0 +1,10 @@
+{
+  "aws_role_arn": "arn:aws:iam::896338196417:role/Github-ASPPH-Oidc-Stack-Role-YeQOdUg5HA3n",
+  "deployment_bucket": "cf-templates-original",
+  "target_bucket": "aspph-prod-web-assets",
+  "stack_name": "s3-upload-portal-prod",
+  "environment": "prod",
+  "upload_prefix": "uploads/",
+  "allowed_content_types": "application/pdf",
+  "allowed_origin": "https://send.aspph.org"
+}

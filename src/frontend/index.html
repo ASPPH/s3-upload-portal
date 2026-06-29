@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASPPH Send - File Upload Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="upload-container">
+    <div class="logo-wrapper">
+      <img src="assets/logo.png" alt="ASPPH logo" class="logo">
+    </div>
+
+    <h1>S3 Upload Portal</h1>
+
+    <ul class="file-tips">
+      <li>Avoid spaces and special characters in filenames (use hyphens or underscores)</li>
+      <li>Keep files under 50 MB — use lowercase extensions (e.g. .pdf, .png)</li>
+      <li>Use descriptive names: <code>2025-annual-report.pdf</code> not <code>doc1.pdf</code></li>
+    </ul>
+
+    <form id="upload-form" aria-label="File upload form">
+      <div class="form-group">
+        <label for="file-input">Select file</label>
+        <input
+          type="file"
+          id="file-input"
+          name="file"
+          accept=".pdf,application/pdf"
+          aria-describedby="file-help"
+        >
+        <small id="file-help">Maximum file size: 50 MB. Accepted format: PDF</small>
+      </div>
+
+      <div class="form-group">
+        <label for="password-input">Password</label>
+        <input
+          type="password"
+          id="password-input"
+          name="password"
+          required
+          autocomplete="current-password"
+          aria-describedby="password-help"
+        >
+        <small id="password-help">Enter the shared upload password</small>
+      </div>
+
+      <button type="submit" id="upload-btn" disabled aria-disabled="true">
+        Upload
+      </button>
+    </form>
+
+    <div id="error-container" class="error-message" role="alert" aria-live="assertive" hidden>
+      <p id="error-text"></p>
+    </div>
+
+    <div id="progress-container" class="progress-container" hidden aria-live="polite">
+      <label for="progress-bar">Upload progress</label>
+      <progress id="progress-bar" max="100" value="0"></progress>
+      <span id="progress-text" aria-live="polite">0%</span>
+    </div>
+
+    <div id="result-container" class="result-container" hidden aria-live="polite">
+      <p class="success-message">File uploaded successfully!</p>
+      <div class="url-display">
+        <label for="url-output">Public URL</label>
+        <output id="url-output" class="url-text"></output>
+        <button type="button" id="copy-btn" aria-label="Copy URL to clipboard">
+          Copy
+        </button>
+      </div>
+      <span id="copy-confirmation" class="copy-confirmation" hidden>Copied!</span>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

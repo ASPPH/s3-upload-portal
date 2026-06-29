@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'S3 Upload Portal - Main Stack'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - prod
+    Description: Environment name
+
+  TargetBucketName:
+    Type: String
+    Default: aspph-prod-web-assets
+    Description: Existing public S3 bucket for uploaded files
+
+  AllowedOrigin:
+    Type: String
+    Default: https://send.aspph.org
+    Description: CloudFront domain for CORS
+
+  UploadPrefix:
+    Type: String
+    Default: uploads/
+    Description: S3 key prefix for uploaded files
+
+  AllowedContentTypes:
+    Type: String
+    Default: application/pdf
+    Description: Comma-separated list of allowed MIME types
+
+Resources:
+  FrontendStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.${AWS::Region}.amazonaws.com/${TargetBucketName}/cloudformation/frontend.yaml
+      Parameters:
+        Environment: !Ref Environment
+        CustomDomainName: send.aspph.org
+        AcmCertificateArn: arn:aws:acm:us-east-1:896338196417:certificate/e6fe66c7-4b68-4c07-977d-8473306e2549
+
+  LambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.${AWS::Region}.amazonaws.com/${TargetBucketName}/cloudformation/lambda.yaml
+      Parameters:
+        Environment: !Ref Environment
+        TargetBucketName: !Ref TargetBucketName
+        AllowedOrigin: !Ref AllowedOrigin
+        UploadPrefix: !Ref UploadPrefix
+        AllowedContentTypes: !Ref AllowedContentTypes
+
+  ApiGatewayStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: LambdaStack
+    Properties:
+      TemplateURL: !Sub https://s3.${AWS::Region}.amazonaws.com/${TargetBucketName}/cloudformation/api-gateway.yaml
+      Parameters:
+        Environment: !Ref Environment
+        LambdaFunctionArn: !GetAtt LambdaStack.Outputs.LambdaFunctionArn
+        AllowedOrigin: !Ref AllowedOrigin
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !GetAtt ApiGatewayStack.Outputs.ApiEndpoint
+
+  CloudFrontDomain:
+    Description: CloudFront distribution domain for the portal frontend
+    Value: !GetAtt FrontendStack.Outputs.CloudFrontDomain
+
+  PortalUrl:
+    Description: Full HTTPS URL for the upload portal
+    Value: !GetAtt FrontendStack.Outputs.PortalUrl
+
+  FrontendBucketName:
+    Description: S3 bucket name for deploying frontend files
+    Value: !GetAtt FrontendStack.Outputs.FrontendBucketName

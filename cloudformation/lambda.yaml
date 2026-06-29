@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'S3 Upload Portal - Lambda Function'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - prod
+    Description: Environment name
+
+  TargetBucketName:
+    Type: String
+    Default: aspph-prod-web-assets
+    Description: Existing public S3 bucket for uploaded files
+
+  AllowedOrigin:
+    Type: String
+    Default: https://send.aspph.org
+    Description: CloudFront domain for CORS
+
+  UploadPrefix:
+    Type: String
+    Default: uploads/
+    Description: S3 key prefix for uploaded files
+
+  AllowedContentTypes:
+    Type: String
+    Default: application/pdf
+    Description: Comma-separated list of allowed MIME types
+
+Resources:
+  # Secrets Manager secret for upload password
+  UploadPasswordSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub s3-upload-portal/${Environment}/upload-password
+      Description: Shared password for S3 Upload Portal authentication
+      SecretString: CHANGE_ME_AFTER_DEPLOY
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: s3-upload-portal
+
+  UploadFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/s3-upload-portal-${Environment}
+      RetentionInDays: 90
+
+  UploadFunctionExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub s3-upload-portal-lambda-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3PutObjectAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub 'arn:aws:s3:::${TargetBucketName}/${UploadPrefix}*'
+        - PolicyName: CloudWatchLogsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt UploadFunctionLogGroup.Arn
+        - PolicyName: SecretsManagerReadAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref UploadPasswordSecret
+
+  UploadFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub s3-upload-portal-${Environment}
+      Handler: handler.lambda_handler
+      Role: !GetAtt UploadFunctionExecutionRole.Arn
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'placeholder'}
+      Runtime: python3.13
+      Timeout: 10
+      MemorySize: 128
+      Environment:
+        Variables:
+          PASSWORD_SECRET_ARN: !Ref UploadPasswordSecret
+          TARGET_BUCKET: !Ref TargetBucketName
+          UPLOAD_PREFIX: !Ref UploadPrefix
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
+          ALLOWED_CONTENT_TYPES: !Ref AllowedContentTypes
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  LambdaFunctionArn:
+    Description: ARN of the upload Lambda function
+    Value: !GetAtt UploadFunction.Arn

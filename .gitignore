@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+
+# Virtual Environments
+.env
+.venv
+env/
+venv/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# AWS
+.aws-sam/
+.aws/
+
+# Build artifacts
+build/
+dist/
+*.zip
+
+# Logs
+*.log
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+.hypothesis/
+coverage.xml
+
+# Local development
+.env.local
+.env.*.local
+
+# Kiro IDE configuration
+.kiro/
