@@ -382,6 +382,13 @@ progress::-moz-progress-bar {
   color: #0F475C;
 }
 
+.filename-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 0.125rem;
+}
+
 .filename-arrow {
   margin: 0 0.375rem;
   color: #006B94;
