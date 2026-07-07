@@ -13,9 +13,11 @@ Browser (send.aspph.org)
     │                                         │
     │                                         ├─ Validates password (Secrets Manager)
     │                                         ├─ Validates file type + size
+    │                                         ├─ Sanitizes filename
+    │                                         ├─ Checks for existing file (overwrite prompt)
     │                                         └─ Returns presigned PUT URL
     │
-    └─ PUT (file) ──────► S3 (aspph-prod-web-assets/uploads/...)
+    └─ PUT (file) ──────► S3 (aspph-prod-web-assets/shared/...)
                               │
                               └─ Returns permanent public URL
 ```
@@ -27,13 +29,46 @@ Browser (send.aspph.org)
 - Secrets Manager — upload password storage
 - S3 (`aspph-prod-web-assets`) — file storage (public bucket)
 
+## Features
+
+### Drag-and-drop upload
+Users can drag a PDF onto the drop zone or click to browse. Visual feedback (border color change) shows when a file is being dragged over.
+
+### Filename sanitization
+Filenames are automatically cleaned for URL safety. The transformation happens server-side in Lambda and is previewed client-side before upload:
+- Spaces → hyphens
+- Parentheses, brackets, special characters → removed
+- Uppercase → lowercase
+- Multiple hyphens/underscores → collapsed
+
+Examples:
+| Original | Sanitized |
+|----------|-----------|
+| `ASPPH_Bylaws (1).pdf` | `aspph_bylaws-1.pdf` |
+| `Annual Report 2025.pdf` | `annual-report-2025.pdf` |
+| `Q1 Budget [FINAL].pdf` | `q1-budget-final.pdf` |
+
+A "File will be saved as:" preview shows the cleaned name before upload.
+
+### Overwrite confirmation
+If a file with the same sanitized name already exists in S3, the user gets a confirmation dialog showing the existing URL and asking whether to overwrite.
+
+### Upload history
+A "Recent uploads" section below the form shows files uploaded during the current browser session, with clickable links and timestamps. Stored in sessionStorage (clears on tab close). Includes a "Clear history" button.
+
+### Clickable result URL
+After upload, the public URL is displayed as a clickable link that opens in a new tab. The Copy button copies it to clipboard with visual confirmation.
+
+### Upload another
+After a successful upload, an "Upload another file" button resets the form without refreshing the page.
+
 ## Configuration
 
 | Setting | Location | Current Value |
 |---------|----------|---------------|
 | Upload password | Secrets Manager: `s3-upload-portal/prod/upload-password` | (secret) |
 | Allowed file types | Lambda env var: `ALLOWED_CONTENT_TYPES` | `application/pdf` |
-| Upload prefix | Lambda env var: `UPLOAD_PREFIX` | `uploads/` |
+| Upload prefix | Lambda env var: `UPLOAD_PREFIX` | `shared/` |
 | Target bucket | Lambda env var: `TARGET_BUCKET` | `aspph-prod-web-assets` |
 | CORS origin | Lambda env var: `ALLOWED_ORIGIN` | `https://send.aspph.org` |
 
@@ -131,13 +166,18 @@ aws s3 sync src/frontend/ s3://$(aws cloudformation describe-stacks \
 
 - Uploads require a shared password (stored in Secrets Manager, not in code)
 - CORS restricted to `https://send.aspph.org` only
-- Lambda IAM role scoped to `s3:PutObject` on `aspph-prod-web-assets/uploads/*` only
+- Lambda IAM role scoped to `s3:PutObject` and `s3:GetObject` on `aspph-prod-web-assets/shared/*` only
 - Frontend bucket fully private (CloudFront OAC access only)
 - API Gateway throttled at 50 burst / 20 sustained requests per second
 - TLS 1.2+ enforced on CloudFront
 - Presigned upload URLs expire after 5 minutes
 - CloudWatch access logging enabled on API Gateway
+- Filenames sanitized server-side to prevent path traversal or URL issues
 
 ## DNS
 
 `send.aspph.org` → CNAME to CloudFront distribution domain (uses `*.aspph.org` wildcard ACM cert)
+
+## Contact
+
+Questions or issues: helpdesk@aspph.org
