@@ -76,7 +76,7 @@ function sanitizeFilename(filename) {
 }
 
 /**
- * Show filename preview with sanitized version if different.
+ * Show filename preview with sanitized version.
  */
 function showFilenamePreview(file) {
   if (!file) {
@@ -85,14 +85,17 @@ function showFilenamePreview(file) {
   }
 
   var sanitized = sanitizeFilename(file.name);
-  filenameOriginal.textContent = file.name;
   filenamePreview.hidden = false;
 
   if (sanitized !== file.name) {
+    // Name will be changed — show original → sanitized
+    filenameOriginal.textContent = file.name;
     filenameArrow.hidden = false;
     filenameSanitized.hidden = false;
     filenameSanitized.textContent = sanitized;
   } else {
+    // Name stays the same — just show it
+    filenameOriginal.textContent = sanitized;
     filenameArrow.hidden = true;
     filenameSanitized.hidden = true;
   }
