@@ -235,10 +235,12 @@ class TestProperty2ObjectKeyPreservesFilenameAndGuaranteesUniqueness:
 
     @given(filename=valid_filenames)
     @settings(max_examples=100)
-    def test_object_key_contains_original_filename(self, filename):
-        """The generated object key SHALL contain the original filename."""
+    def test_object_key_contains_sanitized_filename(self, filename):
+        """The generated object key SHALL contain the sanitized filename."""
+        sanitize_filename = handler_module.sanitize_filename
         key = generate_object_key(filename)
-        assert filename in key, f"Generated key '{key}' does not contain filename '{filename}'"
+        sanitized = sanitize_filename(filename)
+        assert sanitized in key, f"Generated key '{key}' does not contain sanitized filename '{sanitized}'"
 
     @given(filename=valid_filenames)
     @settings(max_examples=100)

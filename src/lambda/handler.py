@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -135,14 +136,53 @@ def validate_request(body):
     return None, None
 
 
-def generate_object_key(filename):
-    """Generate S3 object key using the original filename.
+def sanitize_filename(filename):
+    """Sanitize filename for URL-safe S3 keys.
 
-    Format: {prefix}{original_filename}
-    Example: uploads/annual-report.pdf
+    - Preserves the file extension
+    - Replaces spaces with hyphens
+    - Removes parentheses, brackets, and URL-unsafe characters
+    - Collapses multiple hyphens/underscores
+    - Lowercases everything
     """
-    prefix = os.environ.get('UPLOAD_PREFIX', 'uploads/')
-    return f'{prefix}{filename}'
+    # Split extension
+    if '.' in filename:
+        name, ext = filename.rsplit('.', 1)
+        ext = '.' + ext.lower()
+    else:
+        name = filename
+        ext = ''
+
+    # Lowercase and replace spaces with hyphens
+    name = name.lower().replace(' ', '-')
+
+    # Remove characters that cause URL issues
+    # Keep: alphanumeric, hyphens, underscores, dots
+    name = re.sub(r'[^a-z0-9\-_.]', '', name)
+
+    # Collapse multiple hyphens or underscores
+    name = re.sub(r'-{2,}', '-', name)
+    name = re.sub(r'_{2,}', '_', name)
+
+    # Strip leading/trailing hyphens or underscores
+    name = name.strip('-_')
+
+    # Fallback if name is empty after sanitization
+    if not name:
+        name = 'file'
+
+    return name + ext
+
+
+def generate_object_key(filename):
+    """Generate S3 object key using the sanitized filename.
+
+    Format: {prefix}{sanitized_filename}
+    Example: shared/aspph-bylaws.pdf
+    """
+    prefix = os.environ.get('UPLOAD_PREFIX', 'shared/')
+    safe_name = sanitize_filename(filename)
+    return f'{prefix}{safe_name}'
 
 
 def check_object_exists(bucket, key):
