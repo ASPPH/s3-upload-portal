@@ -70,11 +70,12 @@ function hideProgress() {
 }
 
 /**
- * Show the result container with the public URL.
+ * Show the result container with the public URL as a clickable link.
  */
 function showResult(publicUrl) {
   resultContainer.hidden = false;
   urlOutput.textContent = publicUrl;
+  urlOutput.href = publicUrl;
 }
 
 /**
@@ -83,6 +84,7 @@ function showResult(publicUrl) {
 function hideResult() {
   resultContainer.hidden = true;
   urlOutput.textContent = '';
+  urlOutput.href = '';
 }
 
 /**
