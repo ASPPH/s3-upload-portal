@@ -26,14 +26,22 @@
     <form id="upload-form" aria-label="File upload form">
       <div class="form-group">
         <label for="file-input">Select file</label>
-        <input
-          type="file"
-          id="file-input"
-          name="file"
-          accept=".pdf,application/pdf"
-          aria-describedby="file-help"
-        >
+        <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Drop a file here or click to select">
+          <p class="drop-zone-text">Drag and drop a PDF here, or click to select</p>
+          <input
+            type="file"
+            id="file-input"
+            name="file"
+            accept=".pdf,application/pdf"
+            aria-describedby="file-help"
+          >
+        </div>
         <small id="file-help">Maximum file size: 50 MB. Accepted format: PDF</small>
+        <div id="filename-preview" class="filename-preview" hidden>
+          <span id="filename-original"></span>
+          <span id="filename-arrow" class="filename-arrow" hidden>&rarr;</span>
+          <span id="filename-sanitized" class="filename-sanitized" hidden></span>
+        </div>
       </div>
 
       <div class="form-group">
@@ -74,8 +82,21 @@
         </button>
       </div>
       <span id="copy-confirmation" class="copy-confirmation" hidden>Copied!</span>
+      <button type="button" id="upload-another-btn" class="upload-another-btn">
+        Upload another file
+      </button>
+    </div>
+
+    <div id="history-container" class="history-container" hidden>
+      <h2>Recent uploads</h2>
+      <ul id="history-list" class="history-list"></ul>
+      <button type="button" id="clear-history-btn" class="clear-history-btn">Clear history</button>
     </div>
   </main>
+
+  <footer class="site-footer">
+    <p>Questions or issues? Contact <a href="mailto:helpdesk@aspph.org">helpdesk@aspph.org</a></p>
+  </footer>
 
   <script src="app.js"></script>
 </body>
