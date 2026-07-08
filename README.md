@@ -53,6 +53,9 @@ A "File will be saved as:" preview shows the cleaned name before upload.
 ### Overwrite confirmation
 If a file with the same sanitized name already exists in S3, the user gets a confirmation dialog showing the existing URL and asking whether to overwrite.
 
+### Replacing an existing file
+To update a file that's already been uploaded (e.g., a new version of a report), simply upload a file with the same name. The system will detect the existing file and prompt you to confirm the overwrite. The public URL stays the same, so any links already shared will automatically point to the new version — no need to update links in emails or on websites.
+
 ### Upload history
 A "Recent uploads" section below the form shows files uploaded during the current browser session, with clickable links and timestamps. Stored in sessionStorage (clears on tab close). Includes a "Clear history" button.
 
