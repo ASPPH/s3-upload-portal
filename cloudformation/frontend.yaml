@@ -11,7 +11,7 @@ Parameters:
 
   CustomDomainName:
     Type: String
-    Default: send.aspph.org
+    Default: s3.aspph.org
     Description: Custom domain name for the upload portal
 
   AcmCertificateArn:

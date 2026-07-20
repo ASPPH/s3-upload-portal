@@ -15,7 +15,7 @@ Parameters:
 
   AllowedOrigin:
     Type: String
-    Default: https://send.aspph.org
+    Default: https://s3.aspph.org
     Description: CloudFront domain for CORS
 
 Resources:

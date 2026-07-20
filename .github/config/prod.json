@@ -6,5 +6,5 @@
   "environment": "prod",
   "upload_prefix": "shared/",
   "allowed_content_types": "application/pdf",
-  "allowed_origin": "https://send.aspph.org"
+  "allowed_origin": "https://s3.aspph.org"
 }

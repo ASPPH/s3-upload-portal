@@ -2,12 +2,12 @@
 
 Password-protected file upload portal for ASPPH staff. Generates presigned S3 URLs for direct browser-to-S3 uploads, returning permanent public links for use on aspph.org.
 
-**Live at:** https://send.aspph.org
+**Live at:** https://s3.aspph.org
 
 ## Architecture
 
 ```
-Browser (send.aspph.org)
+Browser (s3.aspph.org)
     │
     ├─ POST /v1/upload ──► API Gateway ──► Lambda (presigned URL generation)
     │                                         │
@@ -73,7 +73,7 @@ After a successful upload, an "Upload another file" button resets the form witho
 | Allowed file types | Lambda env var: `ALLOWED_CONTENT_TYPES` | `application/pdf` |
 | Upload prefix | Lambda env var: `UPLOAD_PREFIX` | `shared/` |
 | Target bucket | Lambda env var: `TARGET_BUCKET` | `aspph-prod-web-assets` |
-| CORS origin | Lambda env var: `ALLOWED_ORIGIN` | `https://send.aspph.org` |
+| CORS origin | Lambda env var: `ALLOWED_ORIGIN` | `https://s3.aspph.org` |
 
 ### Changing allowed file types
 
@@ -168,7 +168,7 @@ aws s3 sync src/frontend/ s3://$(aws cloudformation describe-stacks \
 ## Security
 
 - Uploads require a shared password (stored in Secrets Manager, not in code)
-- CORS restricted to `https://send.aspph.org` only
+- CORS restricted to `https://s3.aspph.org` only
 - Lambda IAM role scoped to `s3:PutObject` and `s3:GetObject` on `aspph-prod-web-assets/shared/*` only
 - Frontend bucket fully private (CloudFront OAC access only)
 - API Gateway throttled at 50 burst / 20 sustained requests per second
@@ -179,7 +179,7 @@ aws s3 sync src/frontend/ s3://$(aws cloudformation describe-stacks \
 
 ## DNS
 
-`send.aspph.org` → CNAME to CloudFront distribution domain (uses `*.aspph.org` wildcard ACM cert)
+`s3.aspph.org` → CNAME to CloudFront distribution domain (uses `*.aspph.org` wildcard ACM cert)
 
 ## Contact
 
