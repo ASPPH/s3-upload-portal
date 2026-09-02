@@ -116,7 +116,7 @@ jobs:
 
       - name: Upload CloudFormation templates to S3
         run: |
-          aws s3 cp cloudformation/ s3://${{ steps.config.outputs.target_bucket }}/cloudformation/ --recursive
+          aws s3 cp cloudformation/ s3://${{ steps.config.outputs.deployment_bucket }}/cloudformation/ --recursive
 
       - name: Deploy CloudFormation stack
         uses: aws-actions/aws-cloudformation-github-deploy@v1
@@ -126,6 +126,7 @@ jobs:
           parameter-overrides: >-
             Environment=${{ steps.config.outputs.environment }},
             TargetBucketName=${{ steps.config.outputs.target_bucket }},
+            TemplatesBucketName=${{ steps.config.outputs.deployment_bucket }},
             AllowedOrigin=${{ steps.config.outputs.allowed_origin }},
             UploadPrefix=${{ steps.config.outputs.upload_prefix }},
             AllowedContentTypes=${{ steps.config.outputs.allowed_content_types }}

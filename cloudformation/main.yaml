@@ -14,6 +14,11 @@ Parameters:
     Default: aspph-prod-web-assets
     Description: Existing public S3 bucket for uploaded files
 
+  TemplatesBucketName:
+    Type: String
+    Default: cf-templates-original
+    Description: Private S3 bucket that stores the nested CloudFormation templates
+
   AllowedOrigin:
     Type: String
     Default: https://s3.aspph.org
@@ -33,7 +38,7 @@ Resources:
   FrontendStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://s3.${AWS::Region}.amazonaws.com/${TargetBucketName}/cloudformation/frontend.yaml
+      TemplateURL: !Sub https://s3.${AWS::Region}.amazonaws.com/${TemplatesBucketName}/cloudformation/frontend.yaml
       Parameters:
         Environment: !Ref Environment
         CustomDomainName: s3.aspph.org
@@ -42,7 +47,7 @@ Resources:
   LambdaStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://s3.${AWS::Region}.amazonaws.com/${TargetBucketName}/cloudformation/lambda.yaml
+      TemplateURL: !Sub https://s3.${AWS::Region}.amazonaws.com/${TemplatesBucketName}/cloudformation/lambda.yaml
       Parameters:
         Environment: !Ref Environment
         TargetBucketName: !Ref TargetBucketName
@@ -54,7 +59,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn: LambdaStack
     Properties:
-      TemplateURL: !Sub https://s3.${AWS::Region}.amazonaws.com/${TargetBucketName}/cloudformation/api-gateway.yaml
+      TemplateURL: !Sub https://s3.${AWS::Region}.amazonaws.com/${TemplatesBucketName}/cloudformation/api-gateway.yaml
       Parameters:
         Environment: !Ref Environment
         LambdaFunctionArn: !GetAtt LambdaStack.Outputs.LambdaFunctionArn
