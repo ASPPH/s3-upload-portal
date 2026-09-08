@@ -1,8 +1,12 @@
 """Lambda handler for S3 Upload Portal presigned URL generation."""
 
+import hmac
 import json
 import os
 import re
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
 from datetime import datetime, timezone
 
@@ -11,6 +15,19 @@ from botocore.exceptions import ClientError
 
 # Cache the password to avoid hitting Secrets Manager on every invocation
 _cached_password = None
+
+# Cache the reCAPTCHA secret separately
+_cached_recaptcha_secret = None
+
+# Google reCAPTCHA verification endpoint
+RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify'
+
+# Minimum reCAPTCHA v3 score to accept (0.0 = likely bot, 1.0 = likely human).
+# 0.5 is Google's recommended default starting threshold.
+RECAPTCHA_MIN_SCORE = 0.5
+
+# Expected reCAPTCHA action name — must match RECAPTCHA_ACTION in the frontend.
+RECAPTCHA_EXPECTED_ACTION = 'upload'
 
 
 def get_upload_password():
@@ -30,6 +47,71 @@ def get_upload_password():
         return _cached_password
     except ClientError:
         return None
+
+
+def get_recaptcha_secret():
+    """Retrieve the reCAPTCHA secret key from Secrets Manager with caching.
+
+    Returns None if no secret ARN is configured, which disables reCAPTCHA
+    verification (used in local/test environments that don't provision it).
+    """
+    global _cached_recaptcha_secret
+    if _cached_recaptcha_secret is not None:
+        return _cached_recaptcha_secret
+
+    secret_arn = os.environ.get('RECAPTCHA_SECRET_ARN')
+    if not secret_arn:
+        return None
+
+    try:
+        client = boto3.client('secretsmanager')
+        response = client.get_secret_value(SecretId=secret_arn)
+        _cached_recaptcha_secret = response['SecretString']
+        return _cached_recaptcha_secret
+    except ClientError:
+        return None
+
+
+def verify_recaptcha(token):
+    """Verify a reCAPTCHA v3 token with Google's siteverify API.
+
+    Returns True if verification passes (or if reCAPTCHA is not configured).
+    Returns False if a secret is configured but the token is missing, invalid,
+    the action does not match, or the score is below the threshold.
+    """
+    secret = get_recaptcha_secret()
+
+    # reCAPTCHA not provisioned in this environment — skip verification.
+    if not secret:
+        return True
+
+    # A secret is configured, so a token is required.
+    if not token:
+        return False
+
+    data = urllib.parse.urlencode({
+        'secret': secret,
+        'response': token,
+    }).encode('utf-8')
+
+    try:
+        request = urllib.request.Request(RECAPTCHA_VERIFY_URL, data=data)
+        with urllib.request.urlopen(request, timeout=5) as response:
+            result = json.loads(response.read().decode('utf-8'))
+    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError):
+        # Fail closed: if we can't verify, reject the request.
+        return False
+
+    if not result.get('success'):
+        return False
+
+    # Enforce the action name to prevent token reuse from other pages.
+    if result.get('action') != RECAPTCHA_EXPECTED_ACTION:
+        return False
+
+    # v3 returns a score; enforce the minimum threshold.
+    score = result.get('score', 0.0)
+    return score >= RECAPTCHA_MIN_SCORE
 
 DEFAULT_ALLOWED_CONTENT_TYPES = {
     'application/pdf',
@@ -91,7 +173,12 @@ def validate_auth(event):
     if not password:
         return False
 
-    return body.get('password') == password
+    submitted = body.get('password')
+    if not isinstance(submitted, str):
+        return False
+
+    # Constant-time comparison to avoid leaking the password via timing.
+    return hmac.compare_digest(submitted, password)
 
 
 def validate_request(body):
@@ -206,13 +293,6 @@ def lambda_handler(event, context):
     headers = event.get('headers', {}) or {}
     origin = headers.get('origin', '') or headers.get('Origin', '')
 
-    # Validate authentication
-    if not validate_auth(event):
-        return build_response(401, {
-            'error': 'Unauthorized',
-            'message': 'Invalid credentials',
-        }, origin)
-
     # Parse request body
     try:
         body = json.loads(event.get('body', '{}'))
@@ -220,6 +300,21 @@ def lambda_handler(event, context):
         return build_response(400, {
             'error': 'Bad Request',
             'message': 'Invalid request body',
+        }, origin)
+
+    # Verify reCAPTCHA before anything else so bots can't probe the password.
+    # No-op when RECAPTCHA_SECRET_ARN is not configured.
+    if not verify_recaptcha(body.get('recaptchaToken')):
+        return build_response(403, {
+            'error': 'Forbidden',
+            'message': 'reCAPTCHA verification failed. Please try again.',
+        }, origin)
+
+    # Validate authentication
+    if not validate_auth(event):
+        return build_response(401, {
+            'error': 'Unauthorized',
+            'message': 'Invalid credentials',
         }, origin)
 
     # Validate request fields

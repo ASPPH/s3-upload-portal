@@ -43,6 +43,21 @@ Resources:
         - Key: Project
           Value: s3-upload-portal
 
+  # Secrets Manager secret for the Google reCAPTCHA v3 secret key.
+  # Set the real value after deploy (Console or CLI). The matching public
+  # site key is embedded in the frontend (index.html / app.js).
+  RecaptchaSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub s3-upload-portal/${Environment}/recaptcha-secret
+      Description: Google reCAPTCHA v3 secret key for upload verification
+      SecretString: CHANGE_ME_AFTER_DEPLOY
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: s3-upload-portal
+
   UploadFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -88,7 +103,9 @@ Resources:
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
-                Resource: !Ref UploadPasswordSecret
+                Resource:
+                  - !Ref UploadPasswordSecret
+                  - !Ref RecaptchaSecret
 
   UploadFunction:
     Type: AWS::Lambda::Function
@@ -106,6 +123,7 @@ Resources:
       Environment:
         Variables:
           PASSWORD_SECRET_ARN: !Ref UploadPasswordSecret
+          RECAPTCHA_SECRET_ARN: !Ref RecaptchaSecret
           TARGET_BUCKET: !Ref TargetBucketName
           UPLOAD_PREFIX: !Ref UploadPrefix
           ALLOWED_ORIGIN: !Ref AllowedOrigin

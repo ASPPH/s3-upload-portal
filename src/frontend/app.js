@@ -3,6 +3,13 @@
 // API endpoint
 const API_ENDPOINT = 'https://zuxxqyttq2.execute-api.us-east-1.amazonaws.com/prod/v1/upload';
 
+// Google reCAPTCHA v3 site key (public). Must match the key in the api.js script tag
+// in index.html and correspond to the secret stored in Secrets Manager.
+const RECAPTCHA_SITE_KEY = '6Le45rAtAAAAAMhXhLXLgmRbxNF1wFmepV7apZC5';
+
+// reCAPTCHA action name — used for score analytics in the Google admin console.
+const RECAPTCHA_ACTION = 'upload';
+
 // Maximum file size: 50 MB in bytes
 const MAX_FILE_SIZE = 52428800;
 
@@ -237,13 +244,36 @@ function validateFile(file) {
 
 // --- API + upload ---
 
-async function requestPresignedUrl(file, password, confirmOverwrite) {
+/**
+ * Fetch a fresh reCAPTCHA v3 token. Tokens are single-use and expire after
+ * ~2 minutes, so we request one immediately before each upload attempt.
+ * Returns the token string, or rejects if reCAPTCHA failed to load.
+ */
+function getRecaptchaToken() {
+  return new Promise(function (resolve, reject) {
+    if (typeof grecaptcha === 'undefined' || !grecaptcha.ready) {
+      reject(new Error('Verification unavailable. Please refresh the page and try again.'));
+      return;
+    }
+    grecaptcha.ready(function () {
+      grecaptcha
+        .execute(RECAPTCHA_SITE_KEY, { action: RECAPTCHA_ACTION })
+        .then(resolve)
+        .catch(function () {
+          reject(new Error('Verification failed. Please refresh the page and try again.'));
+        });
+    });
+  });
+}
+
+async function requestPresignedUrl(file, password, confirmOverwrite, recaptchaToken) {
   var body = JSON.stringify({
     password: password,
     filename: file.name,
     contentType: file.type,
     fileSize: file.size,
     confirmOverwrite: confirmOverwrite || false,
+    recaptchaToken: recaptchaToken,
   });
 
   var response = await fetch(API_ENDPOINT, {
@@ -379,7 +409,8 @@ uploadForm.addEventListener('submit', async function (event) {
   showProgress();
 
   try {
-    var data = await requestPresignedUrl(file, password, false);
+    var token = await getRecaptchaToken();
+    var data = await requestPresignedUrl(file, password, false, token);
 
     if (data._conflict) {
       hideProgress();
@@ -394,7 +425,9 @@ uploadForm.addEventListener('submit', async function (event) {
         return;
       }
       showProgress();
-      data = await requestPresignedUrl(file, password, true);
+      // reCAPTCHA tokens are single-use, so fetch a fresh one for the retry.
+      var retryToken = await getRecaptchaToken();
+      data = await requestPresignedUrl(file, password, true, retryToken);
     }
 
     await uploadToS3(file, data.uploadUrl, file.type);
