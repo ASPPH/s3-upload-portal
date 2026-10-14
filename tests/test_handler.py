@@ -168,3 +168,15 @@ class TestLambdaHandler:
         body = json.loads(resp['body'])
         assert body['error'] == 'Internal Server Error'
         assert 'Failed to generate upload URL' in body['message']
+
+
+class TestBuildPublicUrl:
+    """Shareable link points at media.aspph.org (CloudFront) when PUBLIC_BASE_URL is set."""
+
+    def test_uses_public_base_url(self, monkeypatch):
+        monkeypatch.setenv('PUBLIC_BASE_URL', 'https://media.aspph.org/')
+        assert handler_module.build_public_url('test-bucket', 'shared/report.pdf') == 'https://media.aspph.org/shared/report.pdf'
+
+    def test_falls_back_to_s3_url(self, monkeypatch):
+        monkeypatch.delenv('PUBLIC_BASE_URL', raising=False)
+        assert handler_module.build_public_url('test-bucket', 'shared/report.pdf') == 'https://test-bucket.s3.amazonaws.com/shared/report.pdf'

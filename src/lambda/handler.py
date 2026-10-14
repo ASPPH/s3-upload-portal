@@ -272,6 +272,12 @@ def generate_object_key(filename):
     return f'{prefix}{safe_name}'
 
 
+def build_public_url(bucket, key):
+    """Shareable link for an uploaded object: PUBLIC_BASE_URL (media.aspph.org) if set, else the S3 URL."""
+    base = os.environ.get('PUBLIC_BASE_URL') or f'https://{bucket}.s3.amazonaws.com'
+    return f'{base.rstrip("/")}/{key}'
+
+
 def check_object_exists(bucket, key):
     """Check if an object already exists in S3.
 
@@ -331,7 +337,7 @@ def lambda_handler(event, context):
 
     # Check if file already exists
     if not confirm_overwrite and check_object_exists(bucket, object_key):
-        public_url = f'https://aspph-prod-web-assets.s3.amazonaws.com/{object_key}'
+        public_url = build_public_url(bucket, object_key)
         return build_response(409, {
             'error': 'Conflict',
             'message': f'A file named "{filename}" already exists.',
@@ -356,7 +362,7 @@ def lambda_handler(event, context):
             'message': 'Failed to generate upload URL',
         }, origin)
 
-    public_url = f'https://aspph-prod-web-assets.s3.amazonaws.com/{object_key}'
+    public_url = build_public_url(bucket, object_key)
 
     return build_response(200, {
         'uploadUrl': upload_url,

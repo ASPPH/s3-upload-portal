@@ -18,8 +18,9 @@ Browser (s3.aspph.org)
     │                                         └─ Returns presigned PUT URL
     │
     └─ PUT (file) ──────► S3 (aspph-prod-web-assets/shared/...)
-                              │
-                              └─ Returns permanent public URL
+
+Shareable link: https://media.aspph.org/shared/<file>
+  (CloudFront distribution E1MM5V1CVFO6YD, reads the bucket through OAC)
 ```
 
 **Key services:**
@@ -27,7 +28,8 @@ Browser (s3.aspph.org)
 - API Gateway (REST) — upload endpoint with throttling and access logging
 - Lambda (Python 3.13) — auth validation, presigned URL generation
 - Secrets Manager — upload password storage
-- S3 (`aspph-prod-web-assets`) — file storage (public bucket)
+- S3 (`aspph-prod-web-assets`) — file storage
+- CloudFront (`media.aspph.org`) — serves the shareable links, so the bucket can be made private later
 
 ## Features
 
@@ -48,19 +50,19 @@ Examples:
 | `Annual Report 2025.pdf` | `annual-report-2025.pdf` |
 | `Q1 Budget [FINAL].pdf` | `q1-budget-final.pdf` |
 
-A "File will be saved as:" preview shows the cleaned name before upload.
+A "Your link will be" preview shows the full link, with the cleaned name, before upload.
 
 ### Overwrite confirmation
-If a file with the same sanitized name already exists in S3, the user gets a confirmation dialog showing the existing URL and asking whether to overwrite.
+If a file with the same sanitized name already exists in S3, the page shows a "file is already online" warning with a link to the current file, and asks whether to replace it or keep the current one.
 
 ### Replacing an existing file
 To update a file that's already been uploaded (e.g., a new version of a report), simply upload a file with the same name. The system will detect the existing file and prompt you to confirm the overwrite. The public URL stays the same, so any links already shared will automatically point to the new version — no need to update links in emails or on websites.
 
 ### Upload history
-A "Recent uploads" section below the form shows files uploaded during the current browser session, with clickable links and timestamps. Stored in sessionStorage (clears on tab close). Includes a "Clear history" button.
+An "Uploaded this session" list below the form shows files uploaded during the current browser session, with clickable links, times and a Copy button on each row. Stored in sessionStorage (clears on tab close). Includes a "Clear list" button.
 
 ### Clickable result URL
-After upload, the public URL is displayed as a clickable link that opens in a new tab. The Copy button copies it to clipboard with visual confirmation.
+After upload, the media.aspph.org link is shown with a Copy link button and an "Open the file" link that opens it in a new tab.
 
 ### Upload another
 After a successful upload, an "Upload another file" button resets the form without refreshing the page.
@@ -73,6 +75,7 @@ After a successful upload, an "Upload another file" button resets the form witho
 | Allowed file types | Lambda env var: `ALLOWED_CONTENT_TYPES` | `application/pdf` |
 | Upload prefix | Lambda env var: `UPLOAD_PREFIX` | `shared/` |
 | Target bucket | Lambda env var: `TARGET_BUCKET` | `aspph-prod-web-assets` |
+| Shareable link base | Lambda env var: `PUBLIC_BASE_URL` (CFN parameter `PublicBaseUrl`) | `https://media.aspph.org` |
 | CORS origin | Lambda env var: `ALLOWED_ORIGIN` | `https://s3.aspph.org` |
 
 ### Changing allowed file types

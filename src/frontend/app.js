@@ -10,6 +10,10 @@ const RECAPTCHA_SITE_KEY = '6Le45rAtAAAAAMhXhLXLgmRbxNF1wFmepV7apZC5';
 // reCAPTCHA action name — used for score analytics in the Google admin console.
 const RECAPTCHA_ACTION = 'upload';
 
+// Used only for the "Your link will be" preview before upload. The real link comes
+// back from the API (Lambda PUBLIC_BASE_URL + UPLOAD_PREFIX), so keep these in sync.
+const PUBLIC_URL_BASE = 'https://media.aspph.org/shared/';
+
 // Maximum file size: 50 MB in bytes
 const MAX_FILE_SIZE = 52428800;
 
@@ -22,29 +26,47 @@ const ALLOWED_CONTENT_TYPES = new Set([
 // Session storage key for upload history
 const HISTORY_KEY = 'aspph-upload-history';
 
+// How long "Copied" shows on a copy button
+const COPIED_MS = 1800;
+
 // DOM references
-const fileInput = document.getElementById('file-input');
-const passwordInput = document.getElementById('password-input');
-const uploadBtn = document.getElementById('upload-btn');
 const uploadForm = document.getElementById('upload-form');
+const fileInput = document.getElementById('file-input');
+const dropZone = document.getElementById('drop-zone');
+const fileChosen = document.getElementById('file-chosen');
+const fileNameEl = document.getElementById('file-name');
+const fileSizeEl = document.getElementById('file-size');
+const removeFileBtn = document.getElementById('remove-file-btn');
+const urlBaseEl = document.getElementById('url-base');
+const urlNameEl = document.getElementById('url-name');
+const renamedNote = document.getElementById('renamed-note');
 const errorContainer = document.getElementById('error-container');
+const errorTitle = document.getElementById('error-title');
 const errorText = document.getElementById('error-text');
+const conflictContainer = document.getElementById('conflict-container');
+const existingLink = document.getElementById('existing-link');
+const replaceBtn = document.getElementById('replace-btn');
+const keepBtn = document.getElementById('keep-btn');
+const passwordStep = document.getElementById('password-step');
+const passwordInput = document.getElementById('password-input');
 const progressContainer = document.getElementById('progress-container');
-const progressBar = document.getElementById('progress-bar');
+const progressName = document.getElementById('progress-name');
+const progressFill = document.getElementById('progress-fill');
 const progressText = document.getElementById('progress-text');
+const submitArea = document.getElementById('submit-area');
+const uploadBtn = document.getElementById('upload-btn');
 const resultContainer = document.getElementById('result-container');
 const urlOutput = document.getElementById('url-output');
 const copyBtn = document.getElementById('copy-btn');
-const copyConfirmation = document.getElementById('copy-confirmation');
+const copyLabel = document.getElementById('copy-label');
+const openFileLink = document.getElementById('open-file-link');
 const uploadAnotherBtn = document.getElementById('upload-another-btn');
-const dropZone = document.getElementById('drop-zone');
-const filenamePreview = document.getElementById('filename-preview');
-const filenameOriginal = document.getElementById('filename-original');
-const filenameArrow = document.getElementById('filename-arrow');
-const filenameSanitized = document.getElementById('filename-sanitized');
 const historyContainer = document.getElementById('history-container');
 const historyList = document.getElementById('history-list');
 const clearHistoryBtn = document.getElementById('clear-history-btn');
+
+// The file currently chosen (null when none)
+var selectedFile = null;
 
 // --- Filename sanitization (mirrors Lambda logic) ---
 
@@ -82,85 +104,126 @@ function sanitizeFilename(filename) {
   return name + ext;
 }
 
-/**
- * Show filename preview with sanitized version.
- */
-function showFilenamePreview(file) {
-  if (!file) {
-    filenamePreview.hidden = true;
-    return;
+function formatSize(bytes) {
+  if (bytes < 1048576) {
+    return Math.max(1, Math.round(bytes / 1024)) + ' KB';
   }
-
-  var sanitized = sanitizeFilename(file.name);
-  filenamePreview.hidden = false;
-
-  if (sanitized !== file.name) {
-    // Name will be changed — show original → sanitized
-    filenameOriginal.textContent = file.name;
-    filenameArrow.hidden = false;
-    filenameSanitized.hidden = false;
-    filenameSanitized.textContent = sanitized;
-  } else {
-    // Name stays the same — just show it
-    filenameOriginal.textContent = sanitized;
-    filenameArrow.hidden = true;
-    filenameSanitized.hidden = true;
-  }
+  return (bytes / 1048576).toFixed(1) + ' MB';
 }
 
 // --- UI helpers ---
 
-function showError(message) {
-  errorText.textContent = message;
+function showError(title, message) {
+  errorTitle.textContent = title;
+  errorText.textContent = message || '';
   errorContainer.hidden = false;
 }
 
 function clearError() {
+  errorTitle.textContent = '';
   errorText.textContent = '';
   errorContainer.hidden = true;
 }
 
+function showSelectedFile(file) {
+  selectedFile = file;
+  if (!file) {
+    fileChosen.hidden = true;
+    dropZone.hidden = false;
+    updateUploadButtonState();
+    return;
+  }
+
+  var sanitized = sanitizeFilename(file.name);
+  fileNameEl.textContent = file.name;
+  fileSizeEl.textContent = formatSize(file.size);
+  urlBaseEl.textContent = PUBLIC_URL_BASE;
+  urlNameEl.textContent = sanitized;
+  renamedNote.hidden = sanitized === file.name;
+  dropZone.hidden = true;
+  fileChosen.hidden = false;
+  updateUploadButtonState();
+}
+
+function showConflict(existingUrl) {
+  existingLink.href = existingUrl;
+  conflictContainer.hidden = false;
+  passwordStep.hidden = true;
+  submitArea.hidden = true;
+}
+
+function hideConflict() {
+  conflictContainer.hidden = true;
+  passwordStep.hidden = false;
+  submitArea.hidden = false;
+}
+
 function showProgress() {
+  progressName.textContent = sanitizeFilename(selectedFile.name);
+  updateProgress(0);
   progressContainer.hidden = false;
-  progressBar.value = 0;
-  progressText.textContent = '0%';
+  passwordStep.hidden = true;
+  submitArea.hidden = true;
 }
 
 function updateProgress(percent) {
   var rounded = Math.round(percent);
-  progressBar.value = rounded;
+  progressFill.style.width = rounded + '%';
   progressText.textContent = rounded + '%';
 }
 
 function hideProgress() {
   progressContainer.hidden = true;
+  passwordStep.hidden = false;
+  submitArea.hidden = false;
 }
 
 function showResult(publicUrl) {
+  uploadForm.hidden = true;
   resultContainer.hidden = false;
   urlOutput.textContent = publicUrl;
-  urlOutput.href = publicUrl;
-}
-
-function hideResult() {
-  resultContainer.hidden = true;
-  urlOutput.textContent = '';
-  urlOutput.href = '';
+  openFileLink.href = publicUrl;
+  copyLabel.textContent = 'Copy link';
+  copyBtn.focus();
 }
 
 function updateUploadButtonState() {
-  var hasFile = fileInput.files && fileInput.files.length > 0;
-  uploadBtn.disabled = !hasFile;
-  uploadBtn.setAttribute('aria-disabled', String(!hasFile));
+  uploadBtn.disabled = !selectedFile;
+}
+
+function setUploading(isUploading) {
+  removeFileBtn.disabled = isUploading;
+  passwordInput.disabled = isUploading;
+  replaceBtn.disabled = isUploading;
+  keepBtn.disabled = isUploading;
+  uploadBtn.disabled = isUploading || !selectedFile;
 }
 
 function resetForm() {
   fileInput.value = '';
-  hideResult();
-  hideProgress();
+  showSelectedFile(null);
   clearError();
-  filenamePreview.hidden = true;
-  updateUploadButtonState();
+  hideConflict();
+  hideProgress();
+  resultContainer.hidden = true;
+  uploadForm.hidden = false;
+}
+
+/**
+ * Copy text and show "Copied" on the button's label for a moment.
+ */
+function copyWithFeedback(text, labelEl, idleLabel) {
+  navigator.clipboard.writeText(text).then(function () {
+    labelEl.textContent = 'Copied';
+    setTimeout(function () {
+      labelEl.textContent = idleLabel;
+    }, COPIED_MS);
+  }).catch(function () {
+    labelEl.textContent = 'Copy failed';
+    setTimeout(function () {
+      labelEl.textContent = idleLabel;
+    }, COPIED_MS);
+  });
 }
 
 // --- Upload history (sessionStorage) ---
@@ -175,22 +238,29 @@ function getHistory() {
 }
 
 function saveToHistory(filename, publicUrl) {
-  var history = getHistory();
+  // A replaced file keeps its link, so drop the older entry for it
+  var history = getHistory().filter(function (item) {
+    return item.url !== publicUrl;
+  });
   history.unshift({
     filename: filename,
     url: publicUrl,
-    time: new Date().toLocaleTimeString(),
+    time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
   });
   // Keep last 20 items
   if (history.length > 20) {
     history = history.slice(0, 20);
   }
-  sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-  renderHistory();
+  try {
+    sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  } catch (e) {
+    // Storage unavailable (private window); the list just won't persist
+  }
+  renderHistory(history);
 }
 
-function renderHistory() {
-  var history = getHistory();
+function renderHistory(history) {
+  history = history || getHistory();
   if (history.length === 0) {
     historyContainer.hidden = true;
     return;
@@ -201,45 +271,83 @@ function renderHistory() {
 
   history.forEach(function (item) {
     var li = document.createElement('li');
+
     var link = document.createElement('a');
     link.href = item.url;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     link.textContent = item.filename;
+
     var time = document.createElement('span');
     time.className = 'history-time';
-    time.textContent = ' (' + item.time + ')';
+    time.textContent = item.time;
+
+    var copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'btn';
+    copy.textContent = 'Copy';
+    copy.setAttribute('aria-label', 'Copy link to ' + item.filename);
+    copy.addEventListener('click', function () {
+      copyWithFeedback(item.url, copy, 'Copy');
+    });
+
     li.appendChild(link);
     li.appendChild(time);
+    li.appendChild(copy);
     historyList.appendChild(li);
   });
 }
 
 function clearHistory() {
-  sessionStorage.removeItem(HISTORY_KEY);
-  renderHistory();
+  try {
+    sessionStorage.removeItem(HISTORY_KEY);
+  } catch (e) {
+    // Nothing stored
+  }
+  renderHistory([]);
 }
 
 // --- File validation ---
 
+/**
+ * Returns [title, message] for an invalid file, or null if it's fine.
+ */
 function validateFile(file) {
   if (!file) {
-    return 'Please select a file to upload.';
-  }
-
-  if (file.size === 0) {
-    return 'Empty files are not permitted.';
-  }
-
-  if (file.size > MAX_FILE_SIZE) {
-    return 'File exceeds maximum size of 50 MB.';
+    return ['Choose a file first.', ''];
   }
 
   if (!ALLOWED_CONTENT_TYPES.has(file.type)) {
-    return 'File type not allowed. Only PDF files are accepted.';
+    return ['Only PDF files can be uploaded.', '"' + file.name + '" isn\'t a PDF. Save it as a PDF first, then try again.'];
+  }
+
+  if (file.size === 0) {
+    return ['That file is empty.', 'Check the PDF opens correctly, then try again.'];
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    return ['That file is over 50 MB.', 'Try compressing the PDF, or contact the helpdesk for large files.'];
   }
 
   return null;
+}
+
+function takeFile(file) {
+  clearError();
+  hideConflict();
+  if (!file) {
+    return;
+  }
+
+  var problem = validateFile(file);
+  if (problem) {
+    fileInput.value = '';
+    showSelectedFile(null);
+    showError(problem[0], problem[1]);
+    return;
+  }
+
+  showSelectedFile(file);
 }
 
 // --- API + upload ---
@@ -290,7 +398,9 @@ async function requestPresignedUrl(file, password, confirmOverwrite, recaptchaTo
   }
 
   if (!response.ok) {
-    throw new Error(data.message || 'Upload request failed.');
+    var error = new Error(data.message || 'Upload request failed.');
+    error.status = response.status;
+    throw error;
   }
 
   return data;
@@ -325,26 +435,66 @@ function uploadToS3(file, uploadUrl, contentType) {
   });
 }
 
-function setUploading(isUploading) {
-  uploadBtn.disabled = isUploading;
-  uploadBtn.setAttribute('aria-disabled', String(isUploading));
-  fileInput.disabled = isUploading;
-  passwordInput.disabled = isUploading;
+function showUploadError(error) {
+  if (error.status === 401) {
+    showError('That password didn’t work.', 'Check it and try again, or ask the helpdesk.');
+    passwordInput.focus();
+    return;
+  }
+  showError('The upload didn’t go through.', error.message || 'An unexpected error occurred.');
+}
+
+/**
+ * Upload the selected file. First attempt sends confirmOverwrite=false; if the
+ * file already exists the API returns 409 and we show the replace prompt.
+ */
+async function runUpload(confirmOverwrite) {
+  var file = selectedFile;
+  var password = passwordInput.value;
+
+  clearError();
+  hideConflict();
+
+  var problem = validateFile(file);
+  if (problem) {
+    showError(problem[0], problem[1]);
+    return;
+  }
+
+  if (!password) {
+    showError('Enter the upload password.', 'It’s the shared staff password. Ask the helpdesk if you don’t have it.');
+    passwordInput.focus();
+    return;
+  }
+
+  setUploading(true);
+  showProgress();
+
+  try {
+    // reCAPTCHA tokens are single-use, so every request gets a fresh one.
+    var token = await getRecaptchaToken();
+    var data = await requestPresignedUrl(file, password, confirmOverwrite, token);
+
+    if (data._conflict) {
+      hideProgress();
+      showConflict(data.existingUrl);
+      return;
+    }
+
+    await uploadToS3(file, data.uploadUrl, file.type);
+
+    hideProgress();
+    showResult(data.publicUrl);
+    saveToHistory(sanitizeFilename(file.name), data.publicUrl);
+  } catch (error) {
+    hideProgress();
+    showUploadError(error);
+  } finally {
+    setUploading(false);
+  }
 }
 
 // --- Drag and drop ---
-
-function handleFileDrop(file) {
-  // Create a new DataTransfer to set files on the input
-  var dt = new DataTransfer();
-  dt.items.add(file);
-  fileInput.files = dt.files;
-
-  updateUploadButtonState();
-  showFilenamePreview(file);
-  clearError();
-  hideResult();
-}
 
 dropZone.addEventListener('dragover', function (event) {
   event.preventDefault();
@@ -361,112 +511,46 @@ dropZone.addEventListener('drop', function (event) {
 
   var files = event.dataTransfer.files;
   if (files.length > 0) {
-    handleFileDrop(files[0]);
-  }
-});
-
-// Click on drop zone triggers file input
-dropZone.addEventListener('click', function () {
-  fileInput.click();
-});
-
-// Keyboard accessibility for drop zone
-dropZone.addEventListener('keydown', function (event) {
-  if (event.key === 'Enter' || event.key === ' ') {
-    event.preventDefault();
-    fileInput.click();
+    takeFile(files[0]);
   }
 });
 
 // --- Event handlers ---
 
 fileInput.addEventListener('change', function () {
-  updateUploadButtonState();
-  clearError();
-  hideResult();
-  var file = fileInput.files[0];
-  showFilenamePreview(file);
+  takeFile(fileInput.files[0]);
 });
 
-// Form submit handler — full upload flow
-uploadForm.addEventListener('submit', async function (event) {
+removeFileBtn.addEventListener('click', function () {
+  fileInput.value = '';
+  clearError();
+  hideConflict();
+  showSelectedFile(null);
+  fileInput.focus();
+});
+
+uploadForm.addEventListener('submit', function (event) {
   event.preventDefault();
-
-  var file = fileInput.files[0];
-  var password = passwordInput.value;
-
-  clearError();
-  hideResult();
-  hideProgress();
-
-  var validationError = validateFile(file);
-  if (validationError) {
-    showError(validationError);
-    return;
-  }
-
-  setUploading(true);
-  showProgress();
-
-  try {
-    var token = await getRecaptchaToken();
-    var data = await requestPresignedUrl(file, password, false, token);
-
-    if (data._conflict) {
-      hideProgress();
-      var confirmed = confirm(
-        'A file named "' + sanitizeFilename(file.name) + '" already exists.\n\n' +
-        'Existing URL: ' + data.existingUrl + '\n\n' +
-        'Do you want to overwrite it?'
-      );
-      if (!confirmed) {
-        setUploading(false);
-        updateUploadButtonState();
-        return;
-      }
-      showProgress();
-      // reCAPTCHA tokens are single-use, so fetch a fresh one for the retry.
-      var retryToken = await getRecaptchaToken();
-      data = await requestPresignedUrl(file, password, true, retryToken);
-    }
-
-    await uploadToS3(file, data.uploadUrl, file.type);
-
-    hideProgress();
-    showResult(data.publicUrl);
-    saveToHistory(sanitizeFilename(file.name), data.publicUrl);
-  } catch (error) {
-    hideProgress();
-    showError(error.message || 'An unexpected error occurred.');
-  } finally {
-    setUploading(false);
-    updateUploadButtonState();
-  }
+  runUpload(false);
 });
 
-// Upload another button
+replaceBtn.addEventListener('click', function () {
+  runUpload(true);
+});
+
+keepBtn.addEventListener('click', function () {
+  hideConflict();
+});
+
 uploadAnotherBtn.addEventListener('click', function () {
   resetForm();
+  fileInput.focus();
 });
 
-// Copy-to-clipboard handler
 copyBtn.addEventListener('click', function () {
-  var url = urlOutput.textContent;
-
-  navigator.clipboard.writeText(url).then(function () {
-    copyConfirmation.hidden = false;
-    copyBtn.classList.add('copied');
-
-    setTimeout(function () {
-      copyConfirmation.hidden = true;
-      copyBtn.classList.remove('copied');
-    }, 2000);
-  }).catch(function () {
-    showError('Failed to copy URL to clipboard');
-  });
+  copyWithFeedback(urlOutput.textContent, copyLabel, 'Copy link');
 });
 
-// Clear history button
 clearHistoryBtn.addEventListener('click', clearHistory);
 
 // Initialize on page load
