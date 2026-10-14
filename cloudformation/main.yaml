@@ -29,6 +29,11 @@ Parameters:
     Default: shared/
     Description: S3 key prefix for uploaded files
 
+  PublicBaseUrl:
+    Type: String
+    Default: https://media.aspph.org
+    Description: Base URL for the shareable link returned to users (CloudFront in front of the target bucket)
+
   AllowedContentTypes:
     Type: String
     Default: application/pdf
@@ -54,6 +59,7 @@ Resources:
         AllowedOrigin: !Ref AllowedOrigin
         UploadPrefix: !Ref UploadPrefix
         AllowedContentTypes: !Ref AllowedContentTypes
+        PublicBaseUrl: !Ref PublicBaseUrl
 
   ApiGatewayStack:
     Type: AWS::CloudFormation::Stack

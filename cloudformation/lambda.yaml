@@ -24,6 +24,11 @@ Parameters:
     Default: shared/
     Description: S3 key prefix for uploaded files
 
+  PublicBaseUrl:
+    Type: String
+    Default: https://media.aspph.org
+    Description: Base URL for the shareable link returned to users
+
   AllowedContentTypes:
     Type: String
     Default: application/pdf
@@ -128,6 +133,7 @@ Resources:
           UPLOAD_PREFIX: !Ref UploadPrefix
           ALLOWED_ORIGIN: !Ref AllowedOrigin
           ALLOWED_CONTENT_TYPES: !Ref AllowedContentTypes
+          PUBLIC_BASE_URL: !Ref PublicBaseUrl
       Tags:
         - Key: Environment
           Value: !Ref Environment
