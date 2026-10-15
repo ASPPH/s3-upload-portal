@@ -219,7 +219,7 @@ function copyWithFeedback(text, labelEl, idleLabel) {
       labelEl.textContent = idleLabel;
     }, COPIED_MS);
   }).catch(function () {
-    labelEl.textContent = 'Copy failed';
+    labelEl.textContent = "Couldn't copy";
     setTimeout(function () {
       labelEl.textContent = idleLabel;
     }, COPIED_MS);
@@ -314,7 +314,7 @@ function clearHistory() {
  */
 function validateFile(file) {
   if (!file) {
-    return ['Choose a file first.', ''];
+    return ['Choose a PDF first.', ''];
   }
 
   if (!ALLOWED_CONTENT_TYPES.has(file.type)) {
@@ -352,6 +352,12 @@ function takeFile(file) {
 
 // --- API + upload ---
 
+function recaptchaError() {
+  var error = new Error('reCAPTCHA token unavailable');
+  error.isRecaptcha = true;
+  return error;
+}
+
 /**
  * Fetch a fresh reCAPTCHA v3 token. Tokens are single-use and expire after
  * ~2 minutes, so we request one immediately before each upload attempt.
@@ -360,7 +366,7 @@ function takeFile(file) {
 function getRecaptchaToken() {
   return new Promise(function (resolve, reject) {
     if (typeof grecaptcha === 'undefined' || !grecaptcha.ready) {
-      reject(new Error('Verification unavailable. Please refresh the page and try again.'));
+      reject(recaptchaError());
       return;
     }
     grecaptcha.ready(function () {
@@ -368,7 +374,7 @@ function getRecaptchaToken() {
         .execute(RECAPTCHA_SITE_KEY, { action: RECAPTCHA_ACTION })
         .then(resolve)
         .catch(function () {
-          reject(new Error('Verification failed. Please refresh the page and try again.'));
+          reject(recaptchaError());
         });
     });
   });
@@ -435,13 +441,29 @@ function uploadToS3(file, uploadUrl, contentType) {
   });
 }
 
+// The API's messages are written for developers, so show our own wording by status.
+var RETRY_MESSAGE = "Try again in a minute, or contact the helpdesk if it keeps happening.";
+var BOT_CHECK_MESSAGE = "We couldn't confirm you're not a bot. Refresh the page and try again.";
+
 function showUploadError(error) {
   if (error.status === 401) {
-    showError('That password didn’t work.', 'Check it and try again, or ask the helpdesk.');
+    showError("That password didn't work.", 'Check it and try again, or ask the helpdesk.');
     passwordInput.focus();
     return;
   }
-  showError('The upload didn’t go through.', error.message || 'An unexpected error occurred.');
+  if (error.status === 403) {
+    showError("The upload didn't go through.", BOT_CHECK_MESSAGE);
+    return;
+  }
+  if (error.status === 413) {
+    showError('That file is over 50 MB.', 'Try compressing the PDF, or contact the helpdesk for large files.');
+    return;
+  }
+  if (error.status === 415) {
+    showError('Only PDF files can be uploaded.', 'Save it as a PDF first, then try again.');
+    return;
+  }
+  showError("The upload didn't go through.", error.isRecaptcha ? BOT_CHECK_MESSAGE : RETRY_MESSAGE);
 }
 
 /**
@@ -462,7 +484,7 @@ async function runUpload(confirmOverwrite) {
   }
 
   if (!password) {
-    showError('Enter the upload password.', 'It’s the shared staff password. Ask the helpdesk if you don’t have it.');
+    showError('Enter the staff upload password.', "It's one password shared by all staff, not your own login. Ask the helpdesk if you don't have it.");
     passwordInput.focus();
     return;
   }

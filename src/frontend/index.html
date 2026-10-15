@@ -44,16 +44,16 @@
       <div class="tips">
         <h2 class="section-label">Before you upload</h2>
         <ul class="check-list">
-          <li>PDF files only, up to 50 MB.</li>
-          <li>Give it a name people will recognize, like <code>2025-annual-report.pdf</code> rather than <code>final.pdf</code>.</li>
+          <li>PDF only, up to 50 MB.</li>
+          <li>Give it a file name people will recognize, like <code>2025-annual-report.pdf</code> rather than <code>final.pdf</code>.</li>
           <li>Leave out labels like "final", "new" or "v3". They go out of date fast.</li>
-          <li>Don't worry about spaces or capitals. We tidy the name for you and show the final link before you upload.</li>
+          <li>Don't worry about spaces or capitals. We tidy the file name for you and show the final link before you upload.</li>
         </ul>
       </div>
 
       <div class="tips">
-        <h2 class="section-label">Updating a file?</h2>
-        <p>Upload the new version with the same filename. The link stays the same, so everywhere it's already shared shows the new file.</p>
+        <h2 class="section-label">Replacing a file?</h2>
+        <p>Upload the new version with the same file name. The link stays the same, so everywhere it's already shared shows the new file.</p>
       </div>
     </section>
 
@@ -89,7 +89,7 @@
               <div class="link-preview">
                 <span class="section-label small">Your link will be</span>
                 <div class="url-box"><span id="url-base" class="url-base"></span><span id="url-name" class="url-name"></span></div>
-                <span id="renamed-note" class="muted" hidden>We tidied the filename so it works in a link.</span>
+                <span id="renamed-note" class="muted" hidden>We tidied the file name so it works in a link.</span>
               </div>
             </div>
 
@@ -102,7 +102,7 @@
               <div class="alert-body">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
                 <div class="alert-text">
-                  <span class="alert-title">A file with this name is already online</span>
+                  <span class="alert-title">A file with this name is already live</span>
                   <span>If you replace it, the link stays the same and everyone who has it will see your new version.</span>
                   <a id="existing-link" href="#" target="_blank" rel="noopener noreferrer">Open the current file</a>
                 </div>
@@ -117,10 +117,10 @@
           <div id="password-step" class="step">
             <label for="password-input" class="step-head">
               <span class="step-number" aria-hidden="true">2</span>
-              <span class="step-title">Enter the upload password</span>
+              <span class="step-title">Enter the staff upload password</span>
             </label>
             <input type="password" id="password-input" name="password" class="text-input" required autocomplete="current-password" aria-describedby="password-help">
-            <span id="password-help" class="muted">The shared staff password. Don't have it? Ask the helpdesk.</span>
+            <span id="password-help" class="muted">This is one password shared by all staff, not your own login. Don't have it? Email <a href="mailto:helpdesk@aspph.org">helpdesk@aspph.org</a>.</span>
           </div>
 
           <div id="progress-container" class="progress" role="status" hidden>
@@ -163,7 +163,7 @@
 
       <div id="history-container" class="history" hidden>
         <div class="history-head">
-          <h2 class="section-label">Uploaded this session</h2>
+          <h2 class="section-label">Your uploads (this visit)</h2>
           <button type="button" id="clear-history-btn" class="text-btn">Clear list</button>
         </div>
         <ul id="history-list" class="history-list"></ul>
