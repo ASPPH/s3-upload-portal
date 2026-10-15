@@ -53,13 +53,13 @@ Examples:
 A "Your link will be" preview shows the full link, with the cleaned name, before upload.
 
 ### Overwrite confirmation
-If a file with the same sanitized name already exists in S3, the page shows a "file is already online" warning with a link to the current file, and asks whether to replace it or keep the current one.
+If a file with the same sanitized name already exists in S3, the page shows an "already live" warning with a link to the current file, and asks whether to replace it or keep the current one.
 
 ### Replacing an existing file
 To update a file that's already been uploaded (e.g., a new version of a report), simply upload a file with the same name. The system will detect the existing file and prompt you to confirm the overwrite. The public URL stays the same, so any links already shared will automatically point to the new version — no need to update links in emails or on websites.
 
 ### Upload history
-An "Uploaded this session" list below the form shows files uploaded during the current browser session, with clickable links, times and a Copy button on each row. Stored in sessionStorage (clears on tab close). Includes a "Clear list" button.
+A "Your uploads (this visit)" list below the form shows files uploaded during the current browser session, with clickable links, times and a Copy button on each row. Stored in sessionStorage (clears on tab close). Includes a "Clear list" button.
 
 ### Clickable result URL
 After upload, the media.aspph.org link is shown with a Copy link button and an "Open the file" link that opens it in a new tab.

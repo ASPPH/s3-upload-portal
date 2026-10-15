@@ -73,6 +73,7 @@ code {
   font-size: 14px;
   background: var(--code-bg);
   padding: 1px 5px;
+  white-space: nowrap;
 }
 
 .muted {
@@ -180,7 +181,6 @@ h1 {
   font-size: clamp(36px, 4.2vw, 50px);
   line-height: 1;
   font-weight: 900;
-  text-transform: uppercase;
   color: var(--ink);
 }
 
